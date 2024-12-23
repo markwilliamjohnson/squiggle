@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Animated Protein Model</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        let scene, camera, renderer, controls;
+        let proteinMesh, maxVertices;
+        let drawCount = 0; // Counter to animate drawing
+        let initialPoint = null; // To store the initial coordinate
+        let completing = false; // Flag to manage the completion path
+    
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xeeeeee);
+    
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 30;
+    
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+    
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+    
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(1, 1, 1).normalize();
+            scene.add(light);
+    
+            createProtein();
+            animate();
+        }
+    
+        function createProtein() {
+            const points = [];
+            for (let i = 0; i < 50; i++) {
+                points.push(new THREE.Vector3(
+                    Math.sin(i * 0.2) * Math.random() * 8,
+                    Math.cos(i * 0.2) * Math.random() * 8,
+                    Math.sin(i * 0.2) * Math.cos(i * 0.2) * Math.random() * 20
+                ));
+            }
+    
+            initialPoint = points[0]; // Store the first point as initial
+    
+            const curve = new THREE.CatmullRomCurve3(points);
+            const geometry = new THREE.TubeGeometry(curve, 100, 0.3, 8, false);
+            maxVertices = 5000;
+            geometry.setDrawRange(0, 0); // Start with no visible geometry
+    
+            const material = new THREE.MeshLambertMaterial({ color: 0x2194ce, side: THREE.DoubleSide });
+            proteinMesh = new THREE.Mesh(geometry, material);
+            scene.add(proteinMesh);
+        }
+    
+        function animate() {
+            requestAnimationFrame(animate);
+    
+            if (drawCount < maxVertices) {
+                drawCount += 10; // Adjust the speed of drawing here
+                proteinMesh.geometry.setDrawRange(0, drawCount);
+                console.log (drawCount)
+            } else if (completing == false) {
+                // Once maxVertices is reached and not already completing                
+                completing = true;
+                closeLoop();
+            }
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    
+        function closeLoop() {
+            // Function to animate the path back to the initial point
+            const lastPoint = proteinMesh.geometry.attributes.position.array.slice(-3); // Get the last point coordinates
+            const endPoint = new THREE.Vector3(...lastPoint);
+            completing = true
+            const returnPath = new THREE.CatmullRomCurve3([endPoint, initialPoint]);
+            const returnGeometry = new THREE.TubeGeometry(returnPath, 20, 0.3, 8, false);
+            const returnMesh = new THREE.Mesh(returnGeometry, proteinMesh.material);
+            scene.add(returnMesh);
+        }
+    
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    
+        init();
+    </script>
+    
+</body>
+</html>
